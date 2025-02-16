@@ -2,35 +2,65 @@
 
 Bot de música para Discord con sistema multiidioma avanzado y arquitectura moderna.
 
-## 📊 Arquitectura del Sistema
+## 📊 Flujos del Sistema
 
+### Proceso de Inicio
 ```mermaid
 graph TD
-    A[Invitación del Bot] --> B{Primera vez?}
-    B -->|Sí| C[Detectar idioma]
-    B -->|No| D[Cargar configuración]
-    C --> E[Enviar mensaje bienvenida]
-    D --> F[Continuar normalmente]
-    E --> G[Crear archivos config]
-    G --> F
+    A[Bot Invitado al Servidor] -->|Primera conexión| B[Buscar Canal del Sistema]
+    B -->|Canal encontrado| C[Detectar Idioma del Servidor]
+    C -->|Idioma Soportado| D[Mensaje: Idioma Detectado]
+    C -->|Idioma no Soportado| E[Mensaje: Usando Inglés por Defecto]
+    D --> F[Mensaje de Bienvenida]
+    E --> F
+    F --> G[Crear Configuración Servidor]
+    G --> H[Bot Listo para Usar]
 ```
 
-## 🔄 Flujo de Reproducción
+### Comando /play
+```mermaid
+graph TD
+    A[/play URL] -->|Verificar| B{URL Válida?}
+    B -->|No| C[Error: URL Inválida]
+    B -->|Sí| D[Verificar Permisos]
+    D -->|No| E[Error: Sin Permisos]
+    D -->|Sí| F[Verificar Canal de Voz]
+    F -->|No| G[Error: No en Canal]
+    F -->|Sí| H[Cargar Audio]
+    H --> I[Iniciar Reproducción]
+    I --> J[Mostrar Embed Info]
+```
 
+### Comando /search
 ```mermaid
 sequenceDiagram
     participant U as Usuario
     participant B as Bot
-    participant YT as YouTube
-    participant LP as LavaPlayer
-    participant VC as Canal de Voz
+    participant YT as YouTube API
+    
+    U->>B: /search query
+    B->>YT: Buscar (límite: 10)
+    YT-->>B: Resultados
+    B->>U: Embed con 10 resultados
+    Note over U,B: Tiempo espera: 60s
+    U->>B: Seleccionar número
+    B->>U: Confirmar selección
+    B->>B: Procesar como /play
+```
 
-    U->>B: /play [URL/búsqueda]
-    B->>YT: Buscar/Validar
-    YT-->>B: Metadata
-    B->>LP: Cargar audio
-    LP->>VC: Stream audio
-    B->>U: Embed con info
+### Panel de Control
+```mermaid
+graph TD
+    A[/setup] -->|Verificar Admin| B{Es Admin?}
+    B -->|No| C[Error: Sin Permisos]
+    B -->|Sí| D[Crear Panel]
+    D --> E[Botones de Control]
+    E -->|▶️| F[Reproducir]
+    E -->|⏸️| G[Pausar]
+    E -->|⏹️| H[Detener]
+    E -->|⏭️| I[Siguiente]
+    E -->|🔊| J[Subir Volumen]
+    E -->|🔉| K[Bajar Volumen]
 ```
 
 ## ✨ Características Completas
