@@ -8,27 +8,32 @@ Bot de música para Discord con sistema multiidioma avanzado y arquitectura mode
 ```mermaid
 graph TD
     A[Bot Invitado al Servidor] -->|Primera conexión| B[Buscar Canal del Sistema]
-    B -->|Canal encontrado| C[Detectar Idioma del Servidor]
-    C -->|Idioma Soportado| D[Mensaje: Idioma Detectado]
-    C -->|Idioma no Soportado| E[Mensaje: Usando Inglés por Defecto]
-    D --> F[Mensaje de Bienvenida]
-    E --> F
-    F --> G[Crear Configuración Servidor]
-    G --> H[Bot Listo para Usar]
+    B -->|Canal encontrado| C[Detectar Idioma]
+    C -->|No detectado| D[Mensaje en Inglés: Idioma no detectado + /language]
+    C -->|Detectado| E[Mensaje en idioma detectado]
+    D -->|2 segundos| F[Mensaje bienvenida en Inglés]
+    E -->|2 segundos| G[Mensaje bienvenida en idioma detectado]
 ```
 
 ### Comando /play
 ```mermaid
 graph TD
-    A[/play URL] -->|Verificar| B{URL Válida?}
-    B -->|No| C[Error: URL Inválida]
-    B -->|Sí| D[Verificar Permisos]
-    D -->|No| E[Error: Sin Permisos]
-    D -->|Sí| F[Verificar Canal de Voz]
-    F -->|No| G[Error: No en Canal]
-    F -->|Sí| H[Cargar Audio]
-    H --> I[Iniciar Reproducción]
-    I --> J[Mostrar Embed Info]
+    A["Usuario: /play input"] --> B{"Es URL?"}
+    B -->|No| C["Sugerir usar /search"]
+    B -->|Sí| D{"Detectar plataforma"}
+    D -->|YouTube| E["Procesar YouTube"]
+    D -->|Spotify| F["Procesar Spotify"]
+    D -->|TikTok| G["Extraer audio TikTok"]
+    D -->|SoundCloud| H["Procesar SoundCloud"]
+    D -->|Otra| I["Error: Plataforma no soportada"]
+    E --> J{"Es playlist?"}
+    F --> J
+    H --> J
+    J -->|No| K["Reproducir track"]
+    J -->|Sí| L["Reproducir primera canción"]
+    L --> M["Añadir resto a la cola"]
+    K --> N["Mostrar info"]
+    M --> N
 ```
 
 ### Comando /search
@@ -48,39 +53,47 @@ sequenceDiagram
     B->>B: Procesar como /play
 ```
 
-### Panel de Control
+### Panel de Control (/setup)
 ```mermaid
 graph TD
-    A[/setup] -->|Verificar Admin| B{Es Admin?}
-    B -->|No| C[Error: Sin Permisos]
-    B -->|Sí| D[Crear Panel]
-    D --> E[Botones de Control]
-    E -->|▶️| F[Reproducir]
-    E -->|⏸️| G[Pausar]
-    E -->|⏹️| H[Detener]
-    E -->|⏭️| I[Siguiente]
-    E -->|🔊| J[Subir Volumen]
-    E -->|🔉| K[Bajar Volumen]
+    A["Usuario: /setup"] --> B["Verificar Permisos"]
+    B --> C{"Es Admin?"}
+    C -->|No| D["Error: Sin permisos"]
+    C -->|Sí| E["Crear Panel"]
+    E --> F["Crear Embed Info"]
+    F --> G["Añadir Botones"]
+    G --> H["Controles Música"]
+    G --> I["Control Volumen"]
+    H --> J["Play/Pause"]
+    H --> K["Stop/Skip"]
+    I --> L["Subir/Bajar"]
+    J --> M["Listener Botones"]
+    K --> M
+    L --> M
+    M --> N["Ejecutar Acción"]
 ```
 
 ## ✨ Características Completas
 
 ### 🎵 Sistema de Música
 - **Reproducción**
-  - YouTube URLs directas
-  - Reproducción instantánea
-  - Auto-reconexión
+  - Múltiples plataformas soportadas:
+    - YouTube (videos y playlists)
+    - Spotify (tracks y playlists)
+    - SoundCloud (tracks y playlists)
+    - TikTok (audio de videos)
+    - Tidal
+    - Deezer
   - Control de volumen (0-200%)
-  - Sistema anti-crash
-  - Buffer adaptativo
+  - Auto-reconexión si hay error
+  - Sistema anti-crash integrado
 
 - **Búsqueda**
-  - Comando `/search` dedicado
-  - 10 resultados de YouTube
-  - Sistema de selección interactivo
-  - Tiempo de expiración: 60 segundos
+  - Comando `/search` separado
+  - Límite: 10 resultados
+  - 60 segundos para seleccionar
   - Vista previa de duración
-  - Información del canal
+  - Selección por números (1-10)
 
 - **Control de Reproducción**
   ```
@@ -104,6 +117,51 @@ graph TD
   - Persistencia por servidor
   - Cambio en tiempo real
   - Traducciones contextuales
+
+### 🌐 Idiomas Disponibles
+
+#### Oficiales de Discord
+| Idioma | Código | País/Región |
+|--------|--------|-------------|
+| English (UK) | en-GB | 🇬🇧 Reino Unido |
+| English (US) | en-US | 🇺🇸 Estados Unidos |
+| Español | es-ES | 🇪🇸 España |
+| Español LATAM | es-419 | 🇲🇽 Latinoamérica |
+| Français | fr | 🇫🇷 Francia |
+| Deutsch | de | 🇩🇪 Alemania |
+| Italiano | it | 🇮🇹 Italia |
+| Português (BR) | pt-BR | 🇧🇷 Brasil |
+| Polski | pl | 🇵🇱 Polonia |
+| Русский | ru | 🇷🇺 Rusia |
+| Українська | uk | 🇺🇦 Ucrania |
+| Nederlands | nl | 🇳🇱 Países Bajos |
+| 日本語 | ja | 🇯🇵 Japón |
+| 한국어 | ko | 🇰🇷 Corea del Sur |
+| 中文 | zh-CN | 🇨🇳 China |
+| 繁體中文 | zh-TW | 🇹🇼 Taiwán |
+| Türkçe | tr | 🇹🇷 Turquía |
+| Magyar | hu | 🇭🇺 Hungría |
+| Čeština | cs | 🇨🇿 República Checa |
+| Ελληνικά | el | 🇬🇷 Grecia |
+| Dansk | da | 🇩🇰 Dinamarca |
+| Română | ro | 🇷🇴 Rumanía |
+| Tiếng Việt | vi | 🇻🇳 Vietnam |
+| Svenska | sv-SE | 🇸🇪 Suecia |
+| ไทย | th | 🇹🇭 Tailandia |
+| Bahasa | id | 🇮🇩 Indonesia |
+| Hrvatski | hr | 🇭🇷 Croacia |
+| български | bg | 🇧🇬 Bulgaria |
+| Lietuvių | lt | 🇱🇹 Lituania |
+| हिन्दी | hi | 🇮🇳 India |
+| Suomi | fi | 🇫🇮 Finlandia |
+| Norsk | no | 🇳🇴 Noruega |
+
+#### Regionales de España
+| Idioma | Código | Región |
+|--------|--------|--------|
+| Català | ca-ES | Cataluña |
+| Euskara | eu-ES | País Vasco |
+| Galego | gl-ES | Galicia |
 
 ### ⚙️ Sistema de Control
 - **Panel de Control**
@@ -133,6 +191,111 @@ graph TD
   /test    - Ejecutar diagnóstico
   /ping    - Verificar latencia
   /status  - Estado del sistema
+  ```
+
+## 📚 Documentación Completa
+
+### 🎵 Comandos de Música
+- **`/play <url>`**
+  - Soporta múltiples plataformas:
+    - YouTube (videos y playlists)
+    - Spotify (tracks y playlists)
+    - TikTok (audio de videos)
+    - SoundCloud (tracks y playlists)
+    - Tidal
+    - Deezer
+  - Detecta automáticamente el tipo de contenido
+  - Reproduce la primera canción al instante
+  - Añade el resto a la cola si es playlist
+  - Manejo de errores robusto
+  - Soporte para streams en vivo
+
+- **`/search <query>`**
+  - Busca hasta 10 resultados en YouTube
+  - Muestra para cada resultado:
+    - Título completo
+    - Duración exacta
+    - Nombre del canal
+    - Vistas y fecha
+  - 60 segundos para seleccionar
+  - Selección mediante números (1-10)
+  - Se procesa como `/play` tras seleccionar
+
+### 🎚️ Control de Reproducción
+- **`/pause`**, **`/resume`**
+  - Pausa/reanuda la reproducción actual
+  - Mantiene la posición exacta
+  - Retiene la cola completa
+
+- **`/stop`**
+  - Detiene la reproducción actual
+  - Limpia la cola de reproducción
+  - Desconecta después de 5 minutos de inactividad
+
+- **`/skip`**
+  - Salta a la siguiente canción en cola
+  - Muestra información de la nueva pista
+  - Aviso si la cola está vacía
+
+- **`/queue`**
+  - Vista paginada (10 canciones por página)
+  - Muestra para cada canción:
+    - Posición en cola
+    - Título y duración
+    - Solicitante
+  - Tiempo total restante
+  - Botones de navegación entre páginas
+
+### 🛠️ Panel de Control
+- **`/setup`**
+  - Requiere permisos de administrador
+  - Crea panel interactivo con:
+    - Información de reproducción actual
+    - Controles básicos (play/pause/stop/skip)
+    - Control de volumen
+    - Vista previa de cola
+  - Auto-actualización cada 5 segundos
+  - Persistente entre reinicios
+
+### 🌐 Sistema de Idiomas
+- **`/language`**
+  - Detección automática al unirse
+  - 35 idiomas totales:
+    - 32 idiomas oficiales Discord
+    - 3 idiomas regionales españoles
+  - Interfaz de selección con banderas
+  - Previsualización de traducciones
+  - Cambio inmediato sin reinicio
+  - Persistencia por servidor
+
+### ⚙️ Configuración Avanzada
+- **Variables de Entorno**
+  ```env
+  BOT_TOKEN=token_discord
+  YOUTUBE_API_KEY=api_key
+  SPOTIFY_CLIENT_ID=spotify_id
+  SPOTIFY_CLIENT_SECRET=spotify_secret
+  DEFAULT_LANGUAGE=es-ES
+  LOG_LEVEL=INFO
+  ```
+
+- **Archivos de Configuración**
+  ```
+  /config/
+    ├── guild_languages.json  # Configuración de idiomas
+    ├── permissions.json      # Permisos personalizados
+    ├── queue_cache.json     # Cache de colas
+    └── settings.json        # Configuración general
+  ```
+
+- **Sistema de Logs**
+  ```
+  /logs/
+    ├── bot.log             # Log principal
+    ├── commands.log        # Registro de comandos
+    ├── music.log          # Registro de reproducciones
+    ├── errors.log         # Registro de errores
+    └── debug.log          # Información de depuración
   ```
 
 ## 🔧 Comandos Detallados
@@ -198,6 +361,5 @@ Desarrollado por Raw Community - Jaie55
 
 ## 📞 Soporte
 
-- [Discord](https://discord.gg/tuservidor)
-- [GitHub Issues](https://github.com/raw-community/TuneTwister/issues)
-- [Documentación](https://github.com/raw-community/TuneTwister/wiki)
+- [Discord](https://discord.gg/zPQb6vnXhn)
+
