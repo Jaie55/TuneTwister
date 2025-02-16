@@ -37,29 +37,29 @@ sequenceDiagram
 
 ### 🎵 Sistema de Música
 - **Reproducción**
-  - YouTube URLs (videos, playlists)
-  - Búsqueda por texto
+  - YouTube URLs directas
+  - Reproducción instantánea
   - Auto-reconexión
   - Control de volumen (0-200%)
   - Sistema anti-crash
   - Buffer adaptativo
 
-- **Cola de Reproducción**
-  - Sistema de paginación
-  - Persistencia entre reinicios
-  - Shuffle
-  - Loop (track/queue)
-  - Historial de reproducción
-  - Previsualización de duración
+- **Búsqueda**
+  - Comando `/search` dedicado
+  - 10 resultados de YouTube
+  - Sistema de selección interactivo
+  - Tiempo de expiración: 60 segundos
+  - Vista previa de duración
+  - Información del canal
 
 - **Control de Reproducción**
   ```
-  /play    - Reproducir música
+  /play    - Reproducir música desde URL de YouTube
+  /search  - Buscar y mostrar 10 resultados de YouTube
   /pause   - Pausar reproducción
   /resume  - Reanudar reproducción
   /stop    - Detener y limpiar cola
   /skip    - Saltar canción actual
-  /seek    - Buscar posición específica
   /volume  - Ajustar volumen
   ```
 
@@ -110,9 +110,9 @@ sequenceDiagram
 ### Sistema de Música
 | Comando | Descripción | Opciones |
 |---------|-------------|----------|
-| `/play` | Reproduce música | `url`, `query`, `playlist` |
-| `/search` | Búsqueda avanzada | `query`, `filter`, `limit` |
-| `/queue` | Gestiona la cola | `page`, `shuffle`, `clear` |
+| `/play` | Reproduce música desde URL | `url` |
+| `/search` | Muestra 10 resultados de YouTube | `query` |
+| `/queue` | Gestiona la cola | `page` |
 
 ### Administración
 | Comando | Descripción | Permisos |
