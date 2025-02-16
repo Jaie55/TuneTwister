@@ -1,5 +1,4 @@
 # 🎵 TuneTwister
-
 Bot de música para Discord con sistema multiidioma avanzado y arquitectura moderna.
 
 ## 📊 Flujos del Sistema
@@ -7,12 +6,15 @@ Bot de música para Discord con sistema multiidioma avanzado y arquitectura mode
 ### Proceso de Inicio
 ```mermaid
 graph TD
-    A[Bot Invitado al Servidor] -->|Primera conexión| B[Buscar Canal del Sistema]
-    B -->|Canal encontrado| C[Detectar Idioma]
-    C -->|No detectado| D[Mensaje en Inglés: Idioma no detectado + /language]
-    C -->|Detectado| E[Mensaje en idioma detectado]
-    D -->|2 segundos| F[Mensaje bienvenida en Inglés]
-    E -->|2 segundos| G[Mensaje bienvenida en idioma detectado]
+    A[Bot Invitado al Servidor] -->|Primera conexión| B[Buscar Canal]
+    B -->|Buscar System Channel| C[Canal Sistema]
+    B -->|No encontrado| D[Buscar Canal Bienvenida]
+    C -->|Encontrado| E[Detectar Idioma]
+    D -->|Encontrado| E
+    E -->|No detectado| F[Mensaje en Inglés: Idioma no detectado + /language]
+    E -->|Detectado| G[Mensaje en idioma detectado]
+    F -->|2 segundos| H[Mensaje bienvenida en Inglés]
+    G -->|2 segundos| I[Mensaje bienvenida en idioma detectado]
 ```
 
 ### Comando /play
@@ -25,13 +27,25 @@ graph TD
     D -->|Spotify| F["Procesar Spotify"]
     D -->|TikTok| G["Extraer audio TikTok"]
     D -->|SoundCloud| H["Procesar SoundCloud"]
-    D -->|Otra| I["Error: Plataforma no soportada"]
+    D -->|Otra| I["Error: URL no soportada"]
+    
     E --> J{"Es playlist?"}
     F --> J
     H --> J
+    
+    E -->|Error| E1["Error: No se pudo cargar"]
+    F -->|Error| F1["Error: API no disponible"]
+    G -->|Error| G1["Error: No se pudo extraer"]
+    H -->|Error| H1["Error: Conexión fallida"]
+    
     J -->|No| K["Reproducir track"]
     J -->|Sí| L["Reproducir primera canción"]
-    L --> M["Añadir resto a la cola"]
+    
+    K -->|Error| K1["Error: Fallo al reproducir"]
+    L -->|Error| L1["Error: No se pudo cargar playlist"]
+    G -->|Éxito| K
+    
+    L --> M["Añadir resto a cola"]
     K --> N["Mostrar info"]
     M --> N
 ```
@@ -44,67 +58,251 @@ sequenceDiagram
     participant YT as YouTube API
     
     U->>B: /search query
-    B->>YT: Buscar (límite: 10)
-    YT-->>B: Resultados
-    B->>U: Embed con 10 resultados
-    Note over U,B: Tiempo espera: 60s
-    U->>B: Seleccionar número
-    B->>U: Confirmar selección
-    B->>B: Procesar como /play
+    
+    alt Query vacío
+        B-->>U: ❌ Ingresa un término de búsqueda
+    else API Error
+        B->>YT: Buscar
+        YT-->>B: Error API
+        B-->>U: ❌ Error en búsqueda: {error}
+    else Sin resultados
+        B->>YT: Buscar
+        YT-->>B: []
+        B-->>U: ❌ No se encontraron resultados
+    else Éxito
+        B->>YT: Buscar (límite: 10)
+        YT-->>B: Resultados
+        B->>U: Mostrar 5 resultados (Página 1/2)
+        Note over U,B: Botones: ⬅️ ➡️ ❌
+        
+        alt Timeout (60s)
+            B->>B: Auto-eliminar mensaje
+        else Cancelado
+            U->>B: ❌ Cancelar
+            B->>B: Eliminar mensaje
+        else Seleccionado
+            U->>B: Seleccionar 1-5
+            B->>B: Procesar como /play
+        end
+    end
 ```
 
-### Panel de Control (/setup)
+### Comandos de Reproducción
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant B as Bot
+    participant P as Player
+    
+    %% Play Command
+    U->>B: /play <url>
+    B->>B: Validar URL
+    B->>P: Cargar Audio
+    P-->>B: Listo para reproducir
+    B->>U: Embed con info
+
+    %% File Command
+    U->>B: /file <archivo>
+    B->>B: Validar archivo
+    B->>P: Cargar archivo local
+    P-->>B: Listo para reproducir
+    B->>U: Embed con info
+
+    %% Search Command
+    U->>B: /search <query>
+    B->>YT: Buscar (10 resultados)
+    YT-->>B: Resultados
+    B->>U: Mostrar 5 resultados
+    Note over U,B: Navegación y selección
+```
+
+### Comandos de Control
 ```mermaid
 graph TD
-    A["Usuario: /setup"] --> B["Verificar Permisos"]
-    B --> C{"Es Admin?"}
-    C -->|No| D["Error: Sin permisos"]
-    C -->|Sí| E["Crear Panel"]
-    E --> F["Crear Embed Info"]
-    F --> G["Añadir Botones"]
-    G --> H["Controles Música"]
-    G --> I["Control Volumen"]
-    H --> J["Play/Pause"]
-    H --> K["Stop/Skip"]
-    I --> L["Subir/Bajar"]
-    J --> M["Listener Botones"]
-    K --> M
-    L --> M
-    M --> N["Ejecutar Acción"]
+    A1["/pause"] -->|"Usuario en canal"| B1["Pausar reproducción"]
+    B1 -->|"Éxito"| C1["Mostrar confirmación"]
+    
+    A2["/resume"] -->|"Usuario en canal"| B2["Reanudar reproducción"]
+    B2 -->|"Éxito"| C2["Mostrar confirmación"]
+    
+    A3["/skip"] -->|"Cola no vacía"| B3["Saltar canción"]
+    B3 -->|"Siguiente canción"| C3["Mostrar nueva info"]
+    
+    A4["/leave"] --> B4["Detener reproducción"]
+    B4 --> C4["Limpiar cola"]
+    C4 --> D4["Desconectar bot"]
+    
+    A5["/clear"] --> B5["Limpiar cola"]
+    B5 --> C5["Mostrar cantidad eliminada"]
 ```
+
+### Comandos de Información
+```mermaid
+graph TD
+    A1["/queue"] --> B1["Obtener cola"]
+    B1 -->|"Cola no vacía"| C1["Mostrar página"]
+    B1 -->|"Cola vacía"| D1["Mensaje: Cola vacía"]
+    C1 --> E1["Botones navegación"]
+    
+    A2["/nowplaying"] --> B2["Obtener track actual"]
+    B2 -->|"Reproduciendo"| C2["Mostrar info detallada"]
+    B2 -->|"No hay música"| D2["Mensaje: Nada sonando"]
+    
+    A3["/info"] --> B3["Recopilar datos"]
+    B3 --> C3["Mostrar estadísticas"]
+    
+    A4["/help"] --> B4["Listar comandos"]
+    B4 --> C4["Mostrar por categorías"]
+```
+
+### Sistema de Idiomas
+```mermaid
+graph TD
+    A[Bot Invitado] --> B[Detectar Idioma]
+    B -->|No detectado| C["Mensaje en Inglés + Info /language"]
+    B -->|Detectado| D["Mensaje en idioma detectado"]
+    
+    E["/language"] -->|"Es Admin"| F["Mostrar selector"]
+    F --> G["Mostrar idiomas disponibles"]
+    G --> H["Botones de selección"]
+    H -->|"Selección"| I["Cambiar idioma"]
+    I --> J["Actualizar config"]
+    J --> K["Confirmar cambio"]
+
+    L["Gestión Idiomas"] --> M["Detección automática"]
+    L --> N["Persistencia por servidor"]
+    L --> O["Cambio en tiempo real"]
+    L --> P["Fallback a inglés"]
+```
+
+### Desconexión por Inactividad
+```mermaid
+graph TD
+    A[Reproducción finalizada] --> B{Cola vacía}
+    B -->|Sí| C[Iniciar temporizador de inactividad]
+    B -->|No| D[Reproducir siguiente canción]
+    C --> E[Esperar 5 minutos]
+    E --> F{Actividad detectada?}
+    F -->|Sí| G[Cancelar temporizador]
+    F -->|No| H[Desconectar bot]
+    H --> I[Limpiar cola]
+    I --> J[Salir del canal de voz]
+```
+
+### 🌐 Sistema de Idiomas
+- **Características**
+  - Detección automática al unirse al servidor
+  - 35 idiomas soportados
+  - Sistema de fallback a inglés
+  - Persistencia de configuración
+  - Cambio en tiempo real
+  - Solo administradores pueden cambiar el idioma
+
+- **Comando `/language`**
+  - Uso: `/language`
+  - Requiere permisos de administrador
+  - Muestra selector con banderas
+  - Cambio inmediato sin reinicio
+  - Mensaje de confirmación en nuevo idioma
+
+- **Idiomas Soportados**
+  ```
+  • 32 idiomas oficiales Discord
+  • 3 idiomas regionales españoles (Català, Euskara, Galego)
+  • Detección automática del idioma del servidor
+  • Traducciones verificadas por la comunidad
+  ```
+
+### 🌍 Idiomas Disponibles
+El bot está disponible en los siguientes idiomas:
+
+#### Oficiales de Discord
+| Idioma              | Código  | País/Región         | Bandera |
+|---------------------|---------|---------------------|---------|
+| Español             | es-ES   | España              | 🇪🇸      |
+| English (UK)        | en-GB   | Reino Unido         | 🇬🇧      |
+| English (US)        | en-US   | Estados Unidos      | 🇺🇸      |
+| Español (LATAM)     | es-419  | Latinoamérica       | 🇲🇽      |
+| Français            | fr      | Francia             | 🇫🇷      |
+| Deutsch             | de      | Alemania            | 🇩🇪      |
+| Italiano            | it      | Italia              | 🇮🇹      |
+| Português (BR)      | pt-BR   | Brasil              | 🇧🇷      |
+| Polski              | pl      | Polonia             | 🇵🇱      |
+| Русский             | ru      | Rusia               | 🇷🇺      |
+| Українська          | uk      | Ucrania             | 🇺🇦      |
+| Nederlands          | nl      | Países Bajos        | 🇳🇱      |
+| 日本語               | ja      | Japón               | 🇯🇵      |
+| 한국어               | ko      | Corea del Sur       | 🇰🇷      |
+| 中文                 | zh-CN   | China               | 🇨🇳      |
+| 繁體中文             | zh-TW   | Taiwán              | 🇹🇼      |
+| Türkçe              | tr      | Turquía             | 🇹🇷      |
+| Magyar              | hu      | Hungría             | 🇭🇺      |
+| Čeština             | cs      | República Checa     | 🇨🇿      |
+| Ελληνικά            | el      | Grecia              | 🇬🇷      |
+| Dansk               | da      | Dinamarca           | 🇩🇰      |
+| Română              | ro      | Rumanía             | 🇷🇴      |
+| Tiếng Việt          | vi      | Vietnam             | 🇻🇳      |
+| Svenska             | sv-SE   | Suecia              | 🇸🇪      |
+| ไทย                 | th      | Tailandia           | 🇹🇭      |
+| Bahasa              | id      | Indonesia           | 🇮🇩      |
+| Hrvatski            | hr      | Croacia             | 🇭🇷      |
+| български           | bg      | Bulgaria            | 🇧🇬      |
+| Lietuvių            | lt      | Lituania            | 🇱🇹      |
+| हिन्दी              | hi      | India               | 🇮🇳      |
+| Suomi               | fi      | Finlandia           | 🇫🇮      |
+| Norsk               | no      | Noruega             | 🇳🇴      |
+
+#### Regionales de España
+| Idioma  | Código | Región    | Bandera |
+|---------|--------|-----------|---------|
+| Català  | ca-ES  | Catalunya | 🏴      |
+| Euskara | eu-ES  | Euskadi   | 🏴      |
+| Galego  | gl-ES  | Galicia   | 🏴      |
 
 ## ✨ Características Completas
 
 ### 🎵 Sistema de Música
 - **Reproducción**
-  - Múltiples plataformas soportadas:
+  - Múltiples fuentes soportadas:
     - YouTube (videos y playlists)
     - Spotify (tracks y playlists)
     - SoundCloud (tracks y playlists)
     - TikTok (audio de videos)
-    - Tidal
-    - Deezer
-  - Control de volumen (0-200%)
+    - Archivos locales (mp3, wav, ogg)
   - Auto-reconexión si hay error
   - Sistema anti-crash integrado
 
 - **Búsqueda**
-  - Comando `/search` separado
-  - Límite: 10 resultados
-  - 60 segundos para seleccionar
-  - Vista previa de duración
-  - Selección por números (1-10)
+  - Sistema de paginación (5 resultados por página)
+  - Navegación con botones ⬅️ ➡️
+  - Tiempo de espera: 60 segundos
+  - Cancelación manual ❌
+  - Auto-eliminación tras timeout
 
-- **Control de Reproducción**
-  ```
-  /play    - Reproducir música desde URL de YouTube
-  /search  - Buscar y mostrar 10 resultados de YouTube
-  /pause   - Pausar reproducción
-  /resume  - Reanudar reproducción
-  /stop    - Detener y limpiar cola
-  /skip    - Saltar canción actual
-  /volume  - Ajustar volumen
-  ```
+## 🔧 Comandos Disponibles
+
+### Comandos de Música
+| Comando | Descripción | Uso |
+|---------|-------------|-----|
+| `/play` | Reproduce desde URL | `/play <url>` |
+| `/file` | Reproduce archivo local | `/file <adjunto>` |
+| `/search` | Búsqueda en YouTube | `/search <query>` |
+| `/pause` | Pausa la reproducción | `/pause` |
+| `/resume` | Reanuda la reproducción | `/resume` |
+| `/skip` | Salta a siguiente canción | `/skip` |
+| `/leave` | Desconecta el bot | `/leave` |
+| `/clear` | Limpia la cola | `/clear` |
+| `/queue` | Muestra la cola | `/queue` |
+| `/nowplaying` | Muestra canción actual | `/nowplaying` |
+
+### Comandos de Sistema
+| Comando | Descripción | Uso |
+|---------|-------------|-----|
+| `/help` | Muestra los comandos | `/help` |
+| `/info` | Información del bot | `/info` |
+| `/ping` | Muestra la latencia | `/ping` |
+| `/test` | Prueba el sistema | `/test` |
+| `/language` | Cambiar idioma (Admin) | `/language` |
 
 ### 🌐 Sistema Multiidioma
 - **Idiomas Soportados**
@@ -118,67 +316,16 @@ graph TD
   - Cambio en tiempo real
   - Traducciones contextuales
 
-### 🌐 Idiomas Disponibles
-
-#### Oficiales de Discord
-| Idioma | Código | País/Región |
-|--------|--------|-------------|
-| English (UK) | en-GB | 🇬🇧 Reino Unido |
-| English (US) | en-US | 🇺🇸 Estados Unidos |
-| Español | es-ES | 🇪🇸 España |
-| Español LATAM | es-419 | 🇲🇽 Latinoamérica |
-| Français | fr | 🇫🇷 Francia |
-| Deutsch | de | 🇩🇪 Alemania |
-| Italiano | it | 🇮🇹 Italia |
-| Português (BR) | pt-BR | 🇧🇷 Brasil |
-| Polski | pl | 🇵🇱 Polonia |
-| Русский | ru | 🇷🇺 Rusia |
-| Українська | uk | 🇺🇦 Ucrania |
-| Nederlands | nl | 🇳🇱 Países Bajos |
-| 日本語 | ja | 🇯🇵 Japón |
-| 한국어 | ko | 🇰🇷 Corea del Sur |
-| 中文 | zh-CN | 🇨🇳 China |
-| 繁體中文 | zh-TW | 🇹🇼 Taiwán |
-| Türkçe | tr | 🇹🇷 Turquía |
-| Magyar | hu | 🇭🇺 Hungría |
-| Čeština | cs | 🇨🇿 República Checa |
-| Ελληνικά | el | 🇬🇷 Grecia |
-| Dansk | da | 🇩🇰 Dinamarca |
-| Română | ro | 🇷🇴 Rumanía |
-| Tiếng Việt | vi | 🇻🇳 Vietnam |
-| Svenska | sv-SE | 🇸🇪 Suecia |
-| ไทย | th | 🇹🇭 Tailandia |
-| Bahasa | id | 🇮🇩 Indonesia |
-| Hrvatski | hr | 🇭🇷 Croacia |
-| български | bg | 🇧🇬 Bulgaria |
-| Lietuvių | lt | 🇱🇹 Lituania |
-| हिन्दी | hi | 🇮🇳 India |
-| Suomi | fi | 🇫🇮 Finlandia |
-| Norsk | no | 🇳🇴 Noruega |
-
-#### Regionales de España
-| Idioma | Código | Región |
-|--------|--------|--------|
-| Català | ca-ES | Cataluña |
-| Euskara | eu-ES | País Vasco |
-| Galego | gl-ES | Galicia |
-
 ### ⚙️ Sistema de Control
-- **Panel de Control**
+- **Controles de Música**
   ```
   Botones interactivos:
   ▶️ - Reproducir/Reanudar
   ⏸️ - Pausar
   ⏹️ - Detener
   ⏭️ - Siguiente
-  🔄 - Loop
-  🔀 - Shuffle
+  ❌ - Desconectar bot
   ```
-
-- **Gestión de Permisos**
-  - Control por roles
-  - Restricciones por canal
-  - Comandos administrativos
 
 ### 📊 Monitorización
 - **Sistema de Logs**
@@ -188,7 +335,6 @@ graph TD
 
 - **Diagnósticos**
   ```
-  /test    - Ejecutar diagnóstico
   /ping    - Verificar latencia
   /status  - Estado del sistema
   ```
@@ -246,28 +392,6 @@ graph TD
   - Tiempo total restante
   - Botones de navegación entre páginas
 
-### 🛠️ Panel de Control
-- **`/setup`**
-  - Requiere permisos de administrador
-  - Crea panel interactivo con:
-    - Información de reproducción actual
-    - Controles básicos (play/pause/stop/skip)
-    - Control de volumen
-    - Vista previa de cola
-  - Auto-actualización cada 5 segundos
-  - Persistente entre reinicios
-
-### 🌐 Sistema de Idiomas
-- **`/language`**
-  - Detección automática al unirse
-  - 35 idiomas totales:
-    - 32 idiomas oficiales Discord
-    - 3 idiomas regionales españoles
-  - Interfaz de selección con banderas
-  - Previsualización de traducciones
-  - Cambio inmediato sin reinicio
-  - Persistencia por servidor
-
 ### ⚙️ Configuración Avanzada
 - **Variables de Entorno**
   ```env
@@ -298,46 +422,10 @@ graph TD
     └── debug.log          # Información de depuración
   ```
 
-## 🔧 Comandos Detallados
-
-### Sistema de Música
-| Comando | Descripción | Opciones |
-|---------|-------------|----------|
-| `/play` | Reproduce música desde URL | `url` |
-| `/search` | Muestra 10 resultados de YouTube | `query` |
-| `/queue` | Gestiona la cola | `page` |
-
-### Administración
-| Comando | Descripción | Permisos |
-|---------|-------------|----------|
-| `/setup` | Panel de control | ADMIN |
-| `/language` | Cambiar idioma | ADMIN |
-| `/config` | Configuración | ADMIN |
-
-## 🛠️ Configuración Técnica
-
-### Variables de Entorno
-```env
-BOT_TOKEN=tu_token
-YOUTUBE_API_KEY=tu_api_key
-DEFAULT_PREFIX=/
-DEFAULT_LANGUAGE=es-ES
-```
-
-### Requisitos del Sistema
-- Java 21+
-- 512MB RAM mínimo
-- Permisos Discord:
-  - `VIEW_CHANNEL`
-  - `SEND_MESSAGES`
-  - `EMBED_LINKS`
-  - `CONNECT`
-  - `SPEAK`
-
 ## 📦 Instalación
 
 ```bash
-git clone https://github.com/raw-community/TuneTwister.git
+git clone https://github.com/Jaie55/TuneTwister.git
 cd TuneTwister
 mvn clean install
 java -jar target/TuneTwister.jar
