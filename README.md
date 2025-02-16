@@ -1,5 +1,12 @@
 # 🎵 TuneTwister
-Bot de música para Discord con sistema multiidioma avanzado y arquitectura moderna.
+ℹ Información del Bot
+TuneTwister es un bot de música diseñado para proporcionar una experiencia de reproducción de música fluida en Discord. Este bot puede reproducir música desde varias fuentes como YouTube, Spotify y TikTok.
+
+Finalidad del Bot
+TuneTwister fue creado para evitar los vetos de Google y YouTube en los bots de música en Discord. Por esta razón, el bot es privado y requiere una autorización previa para poder funcionar en un servidor.
+
+Cómo Añadir el Bot
+W.I.P ⚠
 
 ## 📊 Flujos del Sistema
 
